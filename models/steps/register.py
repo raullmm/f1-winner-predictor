@@ -7,7 +7,7 @@ import argparse, pathlib, yaml, mlflow, json
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 
-MODEL_NAME = "f1_winner"
+MODEL_NAME = "f1_winner_v1"
 
 def main(params_file: str = "params.yaml"):
     cfg = yaml.safe_load(open(params_file))

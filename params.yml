@@ -1,6 +1,6 @@
 # params.yaml  ← deja este fichero siempre versionado en Git
 experiment:
-  name: f1_winner      # aparece como experimento en MLflow
+  name: f1_winner_v1      # aparece como experimento en MLflow
   tags:                           # opcional
     track: dry
     data_version: "v1.3"

@@ -36,7 +36,8 @@ def main(params_file: str):
     y = test_df[LABEL]
 
     # -------- carga modelo + eval --------
-    model = joblib.load("model/model.pkl")
+    run_id = pathlib.Path("model/run_id.txt").read_text().strip()
+    model = mlflow.sklearn.load_model(f"runs:/{run_id}/model")
     proba = model.predict_proba(X)[:, 1]
     auc   = roc_auc_score(y, proba)
 

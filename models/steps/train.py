@@ -93,26 +93,27 @@ def main(params_file: str = "params.yml") -> None:
 
     # ---------- MLflow ---------------------------------------------------
     mlflow.set_experiment(cfg["experiment"]["name"])
-    with mlflow.start_run(tags=cfg["experiment"].get("tags", {}), nested=True):
-        # params & métricas
-        mlflow.log_params(cfg["hyperparams"])
-        mlflow.log_param("n_features", len(feature_cols))
-        mlflow.log_metric("train_auc", train_auc)
-        mlflow.log_metric("val_auc",   val_auc)
+    
+    # params & métricas
+    mlflow.log_params(cfg["hyperparams"])
+    mlflow.log_param("n_features", len(feature_cols))
+    mlflow.log_metric("train_auc", train_auc)
+    mlflow.log_metric("val_auc",   val_auc)
 
         # artefactos
         
-        model_path = out_dir / "model.pkl"
-        joblib.dump(model, model_path)
-        mlflow.log_artifact(str(model_path), artifact_path="model")
-        (out_dir / "metrics.json").write_text(
-            json.dumps({"train_auc": train_auc, "val_auc": val_auc}, indent=2)
-        )
+    model_path = out_dir / "model.pkl"
+    mlflow.sklearn.log_model(model, artifact_path="model")
+    run_id = mlflow.active_run().info.run_id
+    (pathlib.Path("model") / "run_id.txt").write_text(run_id)
+    (out_dir / "metrics.json").write_text(
+    json.dumps({"train_auc": train_auc, "val_auc": val_auc}, indent=2)
+    )
 
-        print(
-            f"✅  Train AUC: {train_auc:.3f} | Val AUC: {val_auc:.3f} "
-            f"({len(feature_cols)} features)"
-        )
+    print(
+        f"✅  Train AUC: {train_auc:.3f} | Val AUC: {val_auc:.3f} "
+        f"({len(feature_cols)} features)"
+    )
 
 # ------------------------------------------------------------------------
 if __name__ == "__main__":
