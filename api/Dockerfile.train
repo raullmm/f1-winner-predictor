@@ -1,0 +1,18 @@
+FROM condaforge/mambaforge:latest
+
+# 1. Lockfile → instalamos el entorno
+COPY conda/conda-lock.yml /tmp/conda-lock.yml
+RUN mamba install -y -n base -c conda-forge conda-lock && \
+    conda-lock install --mamba -p /opt/conda/envs/app /tmp/conda-lock.yml && \
+    mamba clean -a -y
+ENV PATH="/opt/conda/envs/app/bin:$PATH"
+
+# 2. Kaggle API credentials — se pasan en build-time (build arg) o runtime (compose env)
+#    aquí sólo creamos la carpeta para cuando existan variables
+RUN mkdir -p /root/.kaggle && chmod 600 /root/.kaggle
+
+WORKDIR /app
+COPY . .
+
+EXPOSE 7000
+CMD ["uvicorn", "api.train_app:app", "--host", "0.0.0.0", "--port", "7000"]

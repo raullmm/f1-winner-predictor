@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow
+    ports: ["${MLFLOW_PORT}:5001"]
+    command: >
+      mlflow server
+      --host 0.0.0.0 --port 5001
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root /mlruns
+    volumes:
+      - mlruns:/mlruns                 # artefactos + BD sqlite
+    env_file: .env
+
+  train:
+    build:
+      context: .
+      dockerfile: api/Dockerfile.train
+    env_file: .env
+    volumes:
+      - data-cache:/app/data           # CSV y otros temporales
+    depends_on: [mlflow]
+    ports:
+      - "7000:7000"
+
+  predict:
+    build:
+      context: .
+      dockerfile: api/Dockerfile.predict
+    container_name: f1-predict
+    environment:
+      - MLFLOW_URI=http://mlflow:5001
+      - MODEL_STAGE=Production
+    ports: ["8080:5000"]
+    depends_on:
+      - mlflow
+      - train
+
+
+volumes:
+  mlruns:       # volumen persistente para artefactos MLflow
+  data-cache:   # volumen persistente para los datos procesados

@@ -1,0 +1,29 @@
+# params.yaml  ← deja este fichero siempre versionado en Git
+experiment:
+  name: f1_winner      # aparece como experimento en MLflow
+  tags:                           # opcional
+    track: dry
+    data_version: "v1.3"
+
+hyperparams:
+  learning_rate: 0.05
+  num_leaves: 31
+  seed: 42
+
+
+data:
+  kaggle_dataset: jtrotman/formula-1-race-data
+  files:
+    - races.csv
+    - circuits.csv
+    - results.csv
+    - drivers.csv
+    - qualifying.csv
+    - driver_standings.csv
+    - constructors.csv
+
+model_card:                       # “sección humana”
+  owner: Juan ignacio Zobian Massetti
+  created: 2025-06-12
+  dataset: Kaggle
+

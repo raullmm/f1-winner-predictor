@@ -1,0 +1,21 @@
+name: f1-predictor
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pandas=2.2.*
+  - scikit-learn=1.6.1       
+  - lightgbm
+  - fastf1=3.2.*
+  - optuna=3.5.*
+  - mlflow=2.13.*
+  - fastapi
+  - uvicorn
+  - jupyterlab
+  - matplotlib
+  - shap
+  - kaggle             
+  - pyarrow                
+  - pip
+  - pip:
+      - feast==0.48.0          

@@ -1,0 +1,11 @@
+# pipeline.yaml  (en la raíz del repo)
+name: f1_training
+steps:
+  ingest:
+    job: python model/steps/ingest.py --params-file params.yaml
+  train:
+    job: python model/steps/train.py  --params-file params.yaml
+  evaluate:
+    job: python model/steps/evaluate.py --params-file params.yaml
+  register:
+    job: python model/steps/register.py --params-file params.yaml

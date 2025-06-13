@@ -1,0 +1,33 @@
+name: f1_training
+
+entry_points:
+  ingest:
+    parameters:
+      params_file: {type: path, default: params.yml}
+    command: "python model/steps/ingest.py --params-file {params_file}"
+
+  train:
+    parameters:
+      params_file: {type: string, default: params.yml}
+    command: "python models/steps/train.py --params-file {params_file}"
+
+  evaluate:
+    parameters:
+      params_file: {type: string, default: params.yml}
+    command: "python models/steps/evaluate.py --params-file {params_file}"
+
+  register:
+    parameters:
+      params_file: {type: string, default: params.yml}
+    command: "python models/steps/register.py --params-file {params_file}"
+
+  pipeline:            # ↙ ejecuta los 4 pasos en el MISMO entorno
+    parameters:
+      params_file: {type: string, default: params.yml}
+    command: >
+      bash -c "
+        python models/steps/ingest.py   --params-file {params_file} &&
+        python models/steps/train.py    --params-file {params_file} &&
+        python models/steps/evaluate.py --params-file {params_file} &&
+        python models/steps/register.py --params-file {params_file}
+      "
