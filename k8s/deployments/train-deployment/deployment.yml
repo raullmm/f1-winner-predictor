@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: train
+  namespace: mlflow-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: train
+  template:
+    metadata:
+      labels:
+        app: train
+    spec:
+      containers:
+        - name: train
+          image: train-image:latest
+          ports:
+            - containerPort: 7000
+          envFrom:
+            - configMapRef:
+                name: mlflow-env
+          volumeMounts:
+            - name: data-cache-vol
+              mountPath: /app/data
+      volumes:
+        - name: data-cache-vol
+          persistentVolumeClaim:
+            claimName: data-cache-pvc
