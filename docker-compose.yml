@@ -4,14 +4,15 @@ services:
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
     container_name: mlflow
-    ports: ["${MLFLOW_PORT}:5001"]
+    ports:
+      - "${MLFLOW_PORT:-5001}:5001"
     command: >
       mlflow server
       --host 0.0.0.0 --port 5001
       --backend-store-uri sqlite:///mlflow.db
       --default-artifact-root /mlruns
     volumes:
-      - mlruns:/mlruns                 # artefactos + BD sqlite
+      - mlruns:/mlruns
     env_file: .env
 
   train:
@@ -20,8 +21,10 @@ services:
       dockerfile: api/Dockerfile.train
     env_file: .env
     volumes:
-      - data-cache:/app/data           # CSV y otros temporales
-    depends_on: [mlflow]
+      - mlruns:/mlruns    
+      - data-cache:/app/data
+    depends_on:
+      - mlflow
     ports:
       - "7000:7000"
 
@@ -33,12 +36,17 @@ services:
     environment:
       - MLFLOW_URI=http://mlflow:5001
       - MODEL_STAGE=Production
-    ports: ["8080:5000"]
+    volumes:
+      - data-cache:/app/data
+      - mlruns:/mlruns
+    ports:
+      - "8080:8000"
     depends_on:
-      - mlflow
-      - train
-
+      train:
+        condition: service_completed_successfully
+      mlflow:
+        condition: service_started
 
 volumes:
-  mlruns:       # volumen persistente para artefactos MLflow
-  data-cache:   # volumen persistente para los datos procesados
+  mlruns:
+  data-cache:

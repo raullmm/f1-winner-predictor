@@ -10,16 +10,15 @@ hyperparams:
   num_leaves: 31
   seed: 42
 
-
 data:
   kaggle_dataset: jtrotman/formula-1-race-data
   files:
     - races.csv
-    - circuits.csv
     - results.csv
-    - drivers.csv
     - qualifying.csv
     - driver_standings.csv
+    - constructor_standings.csv       # ← NUEVO
+    - drivers.csv
     - constructors.csv
 
 model_card:                       # “sección humana”

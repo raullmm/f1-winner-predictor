@@ -1,70 +1,41 @@
 """
 Step: train
-Entrena un modelo GradientBoosting evitando columnas con fugas de información
-(leakage) y registra todo en MLflow.
+Entrena un GradientBoostingClassifier, evitando fugas (leakage), y registra
+todo en MLflow.
 """
-import argparse
-import json
-import pathlib
-import yaml
-import joblib
-import mlflow
-import pandas as pd
+import argparse, json, pathlib, yaml, joblib, mlflow, pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
 from sklearn.ensemble import GradientBoostingClassifier
 
 # ------------------- CONSTANTES -----------------------------------------
-ID_COLS = {"year", "round", "raceId", "driverId", "constructorId"}
-LABEL   = "is_winner"               # nombre del target tras build_feature_table
-
+ID_COLS      = {"year", "round", "raceId", "driverId", "constructorId"}
+LABEL        = "is_winner"
 LEAKAGE_COLS = {
     # columnas que sólo existen tras la bandera a cuadros
     "positionOrder", "positionText", "points", "laps", "milliseconds",
     "time", "rank", "fastestLap", "fastestLapTime", "fastestLapSpeed",
-    "statusId", "finish_pos", "winner"
+    "statusId", "finish_pos", "winner",
 }
 
 # ------------------------------------------------------------------------
 def main(params_file: str = "params.yml") -> None:
-    cfg   = yaml.safe_load(open(params_file))
-    seed  = cfg["hyperparams"]["seed"]
+    cfg  = yaml.safe_load(open(params_file))
+    seed = cfg["hyperparams"]["seed"]
 
     # ---------- leer dataset procesado ----------------------------------
     df = pd.read_csv("data/processed/features.csv")
 
-    # ---------- selección de features -----------------------------------
-    # 1) columnas numéricas
-    numeric_cols = df.select_dtypes("number").columns
-
-    # 2) quitamos IDs, target y leakage
+    # ---------- seleccionar columnas numéricas --------------------------
+    numeric_cols  = df.select_dtypes("number").columns
     feature_cols = [
         c for c in numeric_cols
         if c not in (ID_COLS | LEAKAGE_COLS | {LABEL})
     ]
 
-    X = df[feature_cols]
+    # ---------- matriz X / vector y -------------------------------------
+    X = df[feature_cols].fillna(df[feature_cols].median())
     y = df[LABEL]
-
-    # ---------- selección de features -----------------------------------
-    numeric_cols = df.select_dtypes("number").columns
-    feature_cols = [
-        c for c in numeric_cols
-        if c not in (ID_COLS | LEAKAGE_COLS | {LABEL})
-    ]
-
-    X = df[feature_cols]
-    y = df[LABEL]
-
-    # 🔧---------------------------------------------------------------
-    # Imputación: medianas columna-a-columna
-    X = X.fillna(X.median())
-    # ---------------------------------------------------------------🔧
-
-    # ---------- split reproducible --------------------------------------
-    X_tr, X_val, y_tr, y_val = train_test_split(
-        X, y, test_size=0.20, random_state=seed, stratify=y
-    )
 
     # ---------- split reproducible --------------------------------------
     X_tr, X_val, y_tr, y_val = train_test_split(
@@ -77,47 +48,33 @@ def main(params_file: str = "params.yml") -> None:
         n_estimators  = cfg["hyperparams"].get("n_estimators", 300),
         max_depth     = cfg["hyperparams"].get("max_depth", 3),
         random_state  = seed
-    )
-    model.fit(X_tr, y_tr)
+    ).fit(X_tr, y_tr)
 
     # ---------- métricas -------------------------------------------------
-    train_auc = roc_auc_score(y_tr,  model.predict_proba(X_tr)[:, 1])
+    train_auc = roc_auc_score(y_tr, model.predict_proba(X_tr)[:, 1])
     val_auc   = roc_auc_score(y_val, model.predict_proba(X_val)[:, 1])
 
-
-    # justo después de entrenar y calcular métricas:
+    # ---------- artefactos & MLflow -------------------------------------
     out_dir = pathlib.Path("model"); out_dir.mkdir(exist_ok=True)
-    (pd.Series(feature_cols)
-    .to_csv("model/feature_cols.csv", index=False, header=False))
-    mlflow.log_artifact("model/feature_cols.csv", artifact_path="model")
+    joblib.dump(model, out_dir / "model.pkl")
 
-    # ---------- MLflow ---------------------------------------------------
     mlflow.set_experiment(cfg["experiment"]["name"])
-    
-    # params & métricas
     mlflow.log_params(cfg["hyperparams"])
     mlflow.log_param("n_features", len(feature_cols))
-    mlflow.log_metric("train_auc", train_auc)
-    mlflow.log_metric("val_auc",   val_auc)
-
-        # artefactos
-        
-    model_path = out_dir / "model.pkl"
-    mlflow.sklearn.log_model(model, artifact_path="model")
+    mlflow.log_metrics({"train_auc": train_auc, "val_auc": val_auc})
+    logged = mlflow.sklearn.log_model(model, artifact_path="model")
     run_id = mlflow.active_run().info.run_id
-    (pathlib.Path("model") / "run_id.txt").write_text(run_id)
+
+    (out_dir / "run_id.txt").write_text(run_id)
     (out_dir / "metrics.json").write_text(
-    json.dumps({"train_auc": train_auc, "val_auc": val_auc}, indent=2)
+        json.dumps({"train_auc": train_auc, "val_auc": val_auc}, indent=2)
     )
 
-    print(
-        f"✅  Train AUC: {train_auc:.3f} | Val AUC: {val_auc:.3f} "
-        f"({len(feature_cols)} features)"
-    )
+    print(f"✅  Train AUC: {train_auc:.3f} | Val AUC: {val_auc:.3f} "
+          f"({len(feature_cols)} features)")
 
 # ------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--params-file", default="params.yml")
-    args = parser.parse_args()
-    main(args.params_file)
+    main(parser.parse_args().params_file)

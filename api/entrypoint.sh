@@ -1,19 +1,22 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -e
 
-echo "📁 Archivos disponibles:"
-ls -l /app
+MODEL_DIR="/mlruns/1"
+echo "⏳ Esperando a que aparezca un modelo en $MODEL_DIR ..."
 
-# Esperar a model.pkl
-until [ -f "model.pkl" ]; do
-  echo "⏳ Esperando a que model.pkl esté disponible..."
-  sleep 2
+# espera máx. 180 s
+for i in {1..180}; do
+  MLFILE=$(find "$MODEL_DIR" -type f -name MLmodel | head -n 1)
+  if [[ -n "$MLFILE" ]]; then
+    echo "✔ Modelo detectado: $MLFILE"
+    break
+  fi
+  echo "❌ Modelo no detectado"
+  sleep 1
 done
 
-# Esperar a feature_cols.csv
-until [ -f "model/feature_cols.csv" ]; do
-  echo "⏳ Esperando a feature_cols.csv..."
-  sleep 2
-done
+if [[ -z "$MLFILE" ]]; then
+  echo "❌ No se encontró un modelo tras 180 s"; exit 1
+fi
 
-echo "✅ Archivos encontrados, lanzando API"
-exec "$@"
+exec uvicorn predict:app --host 0.0.0.0 --port 8000

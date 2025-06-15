@@ -1,8 +1,9 @@
+# Dockerfile.predict  – solo las líneas relevantes
 FROM condaforge/mambaforge:latest
-
 WORKDIR /app
 
-# Instalar dependencias
+# … (instalación de dependencias idéntica) …
+# 1. Lockfile → instalamos el entorno
 COPY conda/conda-lock.yml /tmp/conda-lock.yml
 RUN mamba install -y -n base -c conda-forge conda-lock && \
     conda-lock install --mamba -p /opt/conda/envs/app /tmp/conda-lock.yml && \
@@ -11,16 +12,10 @@ ENV PATH="/opt/conda/envs/app/bin:$PATH"
 
 COPY api/predict.py .
 COPY api/entrypoint.sh /entrypoint.sh
-COPY model.pkl . 
+COPY model.pkl .
 
 RUN chmod +x /entrypoint.sh
 
-
-# Exponer puerto
 EXPOSE 8000
-
-# Comando para ejecutar
-
-ENTRYPOINT ["/entrypoint.sh"]
-
+ENTRYPOINT [ "/entrypoint.sh" ]
 CMD ["uvicorn", "predict:app", "--host", "0.0.0.0", "--port", "8000"]
