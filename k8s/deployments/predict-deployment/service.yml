@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: predict
+  namespace: mlflow-stack
+spec:
+  selector:
+    app: predict
+  ports:
+    - port: 8080
+      targetPort: 8000

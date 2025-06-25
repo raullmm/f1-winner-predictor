@@ -3,14 +3,22 @@ kind: Ingress
 metadata:
   name: predict-ingress
   namespace: mlflow-stack
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-    - host: predict.example.com
-      http:
+    # Puedes definir un host si ya tienes uno configurado con tu dominio.
+    # - host: ml.example.com
+    - http:
         paths:
-          - path: /
+          - path: /predict
+            pathType: Prefix
+            backend:
+              service:
+                name: predict
+                port:
+                  number: 8080
+    - http:
+        paths:
+          - path: /predict_winner
             pathType: Prefix
             backend:
               service:

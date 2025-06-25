@@ -1,23 +1,18 @@
-export const drivers = [
-    "Valtteri Bottas",
-    "Lance Stroll",
-    "George Russell",
-    "Fernando Alonso",
-    "Lewis Hamilton",
-    "Sergio Pérez",
-    "Kevin Magnussen",
-    "Carlos Sainz",
-    "Lando Norris",
-    "Charles Leclerc",
-    "Max Verstappen",
-    "Pierre Gasly",
-    "Alexander Albon",
-    "Carlos Sainz Jr.",
-    "Yuki Tsunoda",
-    "Oscar Piastri",
-    "Esteban Ocon",
-    "Logan Sargeant",
-    "Zhou Guanyu",
-    "Nico Hülkenberg",
-    "Nyck de Vries",
+export interface Driver {
+  id: number;            // driverId oficial (dataset Ergast)
+  constructorId: number; // equipo actual
+  name: string;
+}
+
+/**
+ *  Lista mínima para compilar; completa según necesites.
+ *  Los constructorId son los vigentes en 2025.
+ */
+export const drivers: Driver[] = [
+  { id: 1,   constructorId: 131, name: "Lewis Hamilton" },
+  { id: 822, constructorId: 213, name: "Max Verstappen" },
+  { id: 815, constructorId: 6,   name: "Fernando Alonso" },
+  { id: 830, constructorId: 9,   name: "Charles Leclerc" },
+  { id: 832, constructorId: 117, name: "Lando Norris" },
+  // …añade el resto de pilotos que utilices
 ];

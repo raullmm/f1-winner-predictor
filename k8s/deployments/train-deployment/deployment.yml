@@ -15,16 +15,25 @@ spec:
     spec:
       containers:
         - name: train
-          image: train-image:latest
+          image: f1predictoracr.azurecr.io/backend/trainapi:v1
           ports:
             - containerPort: 7000
-          envFrom:
-            - configMapRef:
-                name: mlflow-env
+          env:
+            - name: MLFLOW_URI
+              value: http://mlflow.mlflow-stack.svc.cluster.local:5001
+            - name: MLFLOW_TRACKING_URI
+              value: http://mlflow.mlflow-stack.svc.cluster.local:5001
           volumeMounts:
-            - name: data-cache-vol
+            - name: data-cache
               mountPath: /app/data
+            - name: mlruns
+              mountPath: /mlruns
+      imagePullSecrets:
+        - name: acr-secret
       volumes:
-        - name: data-cache-vol
+        - name: data-cache
           persistentVolumeClaim:
             claimName: data-cache-pvc
+        - name: mlruns
+          persistentVolumeClaim:
+            claimName: mlruns-pvc

@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: predict
+  namespace: mlflow-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: predict
+  template:
+    metadata:
+      labels:
+        app: predict
+    spec:
+      containers:
+        - name: predict
+          image: f1predictoracr.azurecr.io/backend/predictapi:v1
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MLFLOW_URI
+              value: http://mlflow.mlflow-stack.svc.cluster.local:5001
+            - name: MLFLOW_TRACKING_URI
+              value: http://mlflow.mlflow-stack.svc.cluster.local:5001
+            - name: MODEL_STAGE
+              value: Production
+          volumeMounts:
+            - name: data-cache
+              mountPath: /app/data
+            - name: mlruns
+              mountPath: /mlruns
+      imagePullSecrets:
+        - name: acr-secret
+      volumes:
+        - name: data-cache
+          persistentVolumeClaim:
+            claimName: data-cache-pvc
+        - name: mlruns
+          persistentVolumeClaim:
+            claimName: mlruns-pvc

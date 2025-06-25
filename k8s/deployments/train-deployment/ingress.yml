@@ -3,14 +3,13 @@ kind: Ingress
 metadata:
   name: train-ingress
   namespace: mlflow-stack
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-    - host: train.example.com
-      http:
+    # Descomenta y reemplaza si tienes un dominio configurado
+    # - host: ml.example.com
+    - http:
         paths:
-          - path: /
+          - path: /train
             pathType: Prefix
             backend:
               service:

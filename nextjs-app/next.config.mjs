@@ -1,22 +1,29 @@
-/**
- * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
- * for Docker builds.
- */
-await import("./src/env.mjs");
-
 /** @type {import("next").NextConfig} */
-const config = {
+export const nextConfig = {
   reactStrictMode: true,
-
-  /**
-   * If you have `experimental: { appDir: true }` set, then you must comment the below `i18n` config
-   * out.
-   *
-   * @see https://github.com/vercel/next.js/issues/41980
-   */
-  i18n: {
-    locales: ["en"],
-    defaultLocale: "en",
+  experimental: { appDir: false }, // si sigues en páginas clásicas
+  async rewrites() {
+    return [
+      {
+        source: "/backend/:path*",
+        destination: "http://localhost:8000/:path*", // backend FastAPI
+      },
+    ];
   },
 };
-export default config;
+
+const backendURL = process.env.BACKEND_URL || "http://localhost:8000";
+
+export default {
+  reactStrictMode: true,
+  async rewrites() {
+    return [
+      {
+        source: "/backend/:path*",         // todo lo que empiece por /api
+        destination: `${backendURL}/:path*`, // se reenvía al backend
+      },
+    ];
+  },
+};
+
+
