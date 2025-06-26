@@ -153,16 +153,19 @@ def _predict_single(driver_id: int, constructor_id: int,
 
     X = pd.DataFrame([feats])
 
-    # 1) Añadimos cualquier columna faltante como NaN
-    for col in feat_cols:
+    # ░░░░░ BLOQUE seguro: sólo convertimos y forzamos tipo ░░░░░
+    X = pd.DataFrame([feats])
+
+    for col in feat_cols:          # añadimos las que falten
         if col not in X.columns:
-            X[col] = pd.NA                # LightGBM maneja missing → OK
+            X[col] = np.nan
 
-    # 2) Orden EXACTO de columnas que espera el modelo
-    X = X[feat_cols]
+    X = (X[feat_cols]                       # orden exacto
+            .apply(pd.to_numeric,
+                    errors="coerce")        # cualquier string/pd.NA ⇒ NaN
+            .astype("float64"))             # LightGBM acepta NaN
+    # ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
-    # 3) Garantizamos float64 (LightGBM lanzará warning si no)
-    X = X.astype("float64")
 
     return float(model.predict_proba(X)[0, 1])
 
