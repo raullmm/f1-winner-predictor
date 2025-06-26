@@ -14,7 +14,7 @@ const controlsPlugin = plugin(({ addComponents }) => {
         {},
     },
     ".btn-primary": {
-      "px-4 py-2 bg-[#5271ff] hover:bg-[#4363e6] rounded text-white w-full disabled:opacity-60 disabled:pointer-events-none":
+      "rounded-lg bg-white p-2 text-sm font-medium text-black transition-all ease-in-out hover:shadow-2xl disabled:bg-orange-900":
         {},
     },
   });

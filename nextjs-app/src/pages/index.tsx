@@ -19,25 +19,12 @@ const Home: NextPage = () => {
 
       <main className="flex flex-col md:flex-row min-h-screen font-inter">
         {/* Panel izquierdo — Predictor */}
-        <section
-          className="
-            md:fixed md:left-0 md:h-full md:overflow-y-auto
-            px-16 py-12 md:w-1/2 xl:w-1/3
-            text-white
-            bg-gradient-to-b from-[#5271ff] via-[#4363e6] to-[#2b48c8]
-          "
-        >
+        <section className="md:fixed md:overflow-auto md:left-0 md:overflow-y-auto md:h-full bg-[#161616] px-16 py-12 md:w-1/2 xl:w-1/3 bg-[url('/red-bg.jpg')] bg-cover text-white">
           <Predictor />
         </section>
 
         {/* Panel derecho — documentación / texto */}
-        <section
-          className="
-            p-16 md:py-24 md:px-16 xl:px-28 md:w-1/2 xl:w-2/3
-            md:fixed md:right-0 md:h-full md:overflow-y-auto
-            bg-white dark:bg-[#0d1021]
-          "
-        >
+        <section className="p-16 md:py-24 md:px-16 xl:px-28 md:w-1/2 xl:w-2/3 md:overflow-y-auto md:fixed md:right-0 md:h-full">
           <article
             id="871047b8-2997-4a68-9c0f-53ade839e37d"
             className="page sans"

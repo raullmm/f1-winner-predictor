@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: f1-race-predictor
+  namespace: frontend
+spec:
+  selector:
+    app: f1-race-predictor
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 3000

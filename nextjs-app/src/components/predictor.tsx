@@ -31,7 +31,7 @@ export default function Predictor() {
       <form className="space-y-4" onSubmit={handleSubmit}>
         <h1 className="text-2xl font-semibold">Predictor F1</h1>
 
-        <button type="submit" disabled={loading} className="btn-primary">
+        <button type="submit" disabled={loading} className="rounded-lg bg-white p-2 text-sm font-medium text-black transition-all ease-in-out hover:shadow-2xl disabled:bg-orange-900">
           {loading ? "Calculando…" : "Predecir"}
         </button>
       </form>
