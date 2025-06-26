@@ -1,8 +1,9 @@
 """
 FastAPI – F1 Winner Predictor
-· POST /predict          → probabilidad de victoria para un piloto concreto
-· GET  /predict_winner   → piloto(s) con mayor probabilidad de ganar el GP
+· POST /predict          → prob. de victoria para un piloto concreto
+· GET  /predict_winner   → Top-k pilotos con mayor prob. de ganar el GP
 """
+# ───────────────────────── imports ─────────────────────────
 import os
 from pathlib import Path
 from datetime import datetime as dt
@@ -13,18 +14,14 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-# ----------------------------------------------------------------------
-# CONFIG
-# ----------------------------------------------------------------------
+# ───────────────────────── config ──────────────────────────
 MODEL_STAGE   = os.getenv("MODEL_STAGE", "Production")
-MLFLOW_URI    = os.getenv("MLFLOW_URI")          # si no existe, usa model.pkl
+MLFLOW_URI    = os.getenv("MLFLOW_URI")          # si no existe, usa model.pkl local
 DATA_DIR      = Path("data/raw")
 MODEL_PATH    = "model.pkl"
-WIN_THRESHOLD = 0.50                             # 50 % etiqueta booleana
+WIN_THRESHOLD = 0.50                             # 50 % = etiqueta booleana
 
-# ----------------------------------------------------------------------
-# CARGAR MODELO
-# ----------------------------------------------------------------------
+# ───────────────────────── modelo ──────────────────────────
 model = None
 if MLFLOW_URI:
     mlflow.set_tracking_uri(MLFLOW_URI)
@@ -43,9 +40,7 @@ if model is None:
 
 feat_cols = list(getattr(model, "feature_names_in_", []))
 
-# ----------------------------------------------------------------------
-# CARGAR DATA
-# ----------------------------------------------------------------------
+# ───────────────────────── datos CSV ───────────────────────
 drivers   = pd.read_csv(DATA_DIR / "drivers.csv")
 results   = pd.read_csv(DATA_DIR / "results.csv")
 qualifying = pd.read_csv(DATA_DIR / "qualifying.csv")
@@ -59,7 +54,7 @@ driver_lookup = (
            .set_index("driverId")["full"]
 )
 
-# unir standings con fecha de la carrera para filtrar por < race_dt
+# standings con fecha de la carrera
 d_stand = d_stand.merge(races[["raceId", "date"]],
                         on="raceId", how="left") \
                  .rename(columns={"position": "driver_champ_rank",
@@ -72,29 +67,14 @@ c_stand = c_stand.merge(races[["raceId", "date"]],
                                   "points":   "constructor_season_pts",
                                   "date":     "race_dt"})
 
-# ----------------------------------------------------------------------
-# FASTAPI
-# ----------------------------------------------------------------------
-app = FastAPI(title="F1 Predictor API")
-
-class PredictRequest(BaseModel):
-    year: int
-    round: int
-    driverId: int
-    constructorId: int
-
-# ----------------------------------------------------------------------
-# FUNCIÓN AUXILIAR
-# ----------------------------------------------------------------------
+# ───────────────────── helpers características ─────────────
 def _last_k(df: pd.DataFrame, col: str, k: int, agg: str = "sum"):
-    """Retorna función agregada sobre las últimas k filas."""
     if df.empty:
         return None
     return getattr(df.iloc[-k:][col], agg)()
 
 def _stand_before(df: pd.DataFrame, entity_col: str, ent_id: int,
                   race_dt: pd.Timestamp, value_col: str):
-    """Valor de standings más reciente *antes* de race_dt."""
     sub = df[(df[entity_col] == ent_id) & (df["race_dt"] < race_dt)]
     if sub.empty:
         return None
@@ -106,13 +86,30 @@ def _qual_position(race_id: int, driver_id: int):
         return None
     return int(row.iloc[0]["position"])
 
+# ─────────── NUEVO: lista de inscritos robusta ─────────────
+def _entry_list_for_race(race_id: int, race_dt: pd.Timestamp) -> pd.DataFrame:
+    """driverId-constructorId del GP, estimado si aún no hay resultados."""
+    grid = results.query("raceId == @race_id")[["driverId", "constructorId"]]
+    if not grid.empty:
+        return grid.drop_duplicates()
+
+    grid = qualifying.query("raceId == @race_id")[["driverId", "constructorId"]]
+    if not grid.empty:
+        return grid.drop_duplicates()
+
+    prev_races = races[races["date"] < race_dt].sort_values("date", ascending=False)
+    for prev_id in prev_races["raceId"]:
+        grid = results.query("raceId == @prev_id")[["driverId", "constructorId"]]
+        if not grid.empty:
+            return grid.drop_duplicates()
+
+    return pd.DataFrame(columns=["driverId", "constructorId"])  # vacío
+
+# ─────────────────── predicción individual ─────────────────
 def _predict_single(driver_id: int, constructor_id: int,
                     circuit_id: int, race_dt: pd.Timestamp,
                     race_id: int) -> float:
-    """
-    Devuelve probabilidad de victoria para un (driver, constructor) dado
-    estado 48 h antes de la carrera indicada.
-    """
+
     hist = results.merge(
         races[["raceId", "date", "circuitId"]]
               .rename(columns={"date": "race_dt"}),
@@ -123,17 +120,16 @@ def _predict_single(driver_id: int, constructor_id: int,
     con_hist = hist[hist["constructorId"] == constructor_id].sort_values("race_dt")
 
     feats = {
-        # forma reciente (5 últimas)
+        # forma reciente
         "drv_pts_last5":   _last_k(drv_hist, "points", 5),
         "con_pts_last5":   _last_k(con_hist, "points", 5),
-        # forma más corta (3 últimas, retro-compat)
         "drv_pts_last3":   _last_k(drv_hist, "points", 3),
         "con_pts_last3":   _last_k(con_hist, "points", 3),
         "drv_avg_pos_last3": _last_k(drv_hist, "positionOrder", 3, "mean"),
-        # puntos temporada
+        # temporada
         "season_points_so_far":
             drv_hist.query("race_dt.dt.year == @race_dt.year")["points"].sum(),
-        # standings antes de la carrera
+        # standings previos
         "driver_champ_rank":
             _stand_before(d_stand, "driverId", driver_id, race_dt,
                           "driver_champ_rank"),
@@ -146,16 +142,15 @@ def _predict_single(driver_id: int, constructor_id: int,
         "constructor_season_pts":
             _stand_before(c_stand, "constructorId", constructor_id, race_dt,
                           "constructor_season_pts"),
-        # histórico de victorias del constructor en el circuito
+        # histórico constructor-circuito
         "constructor_win_pct_history":
             con_hist.assign(win=lambda d: d["positionOrder"] == 1)
                     .groupby("circuitId")["win"]
                     .mean().reindex([circuit_id]).fillna(0).iloc[0],
-        # posición en qualy
+        # posición de qualy (si existe)
         "qual_pos": _qual_position(race_id, driver_id)
     }
 
-    # asegurar mismas columnas que entrenamiento
     X = pd.DataFrame([feats])
     for col in feat_cols:
         if col not in X.columns:
@@ -164,13 +159,20 @@ def _predict_single(driver_id: int, constructor_id: int,
 
     return float(model.predict_proba(X)[0, 1])
 
-# ----------------------------------------------------------------------
-# ENDPOINTS
-# ----------------------------------------------------------------------
+# ────────────────────────── FastAPI ────────────────────────
+app = FastAPI(title="F1 Predictor API")
+
+class PredictRequest(BaseModel):
+    year: int
+    round: int
+    driverId: int
+    constructorId: int
+
 @app.get("/")
 def root():
     return {"status": "ok", "message": "F1 Predictor API running"}
 
+# ------------------------------ /predict ------------------------------------
 @app.post("/predict")
 def predict(req: PredictRequest):
     try:
@@ -194,6 +196,7 @@ def predict(req: PredictRequest):
         "predicted_winner": prob >= WIN_THRESHOLD
     }
 
+# --------------------------- /predict_winner --------------------------------
 @app.get("/predict_winner")
 def predict_winner(year: int, round: int, top_k: int = 1):
     try:
@@ -205,23 +208,18 @@ def predict_winner(year: int, round: int, top_k: int = 1):
     circuit_id = int(race_row["circuitId"])
     race_dt    = pd.to_datetime(race_row["date"])
 
-    # ⏳ pilotos inscritos en esa carrera
-    grid = (
-        results.query("raceId == @race_id")[["driverId", "constructorId"]]
-               .drop_duplicates()
-               .itertuples(index=False)
-    )
+    grid_df = _entry_list_for_race(race_id, race_dt)
+    if grid_df.empty:
+        raise HTTPException(404, "No existe parrilla estimable para ese GP")
 
     preds = []
-    for driver_id, constructor_id in grid:
+    for driver_id, constructor_id in grid_df.itertuples(index=False):
         prob = _predict_single(driver_id, constructor_id, circuit_id, race_dt, race_id)
         preds.append((driver_id, prob))
 
-    # 📏 NORMALIZAR para que las probabilidades sumen 1
-    total_prob = sum(p for _, p in preds) or 1.0      # evita división por 0
+    total_prob = sum(p for _, p in preds) or 1.0
     preds = [(drv, p / total_prob) for drv, p in preds]
 
-    # elegir Top-k
     preds.sort(key=lambda t: t[1], reverse=True)
     top = preds[: max(1, top_k)]
 
@@ -238,8 +236,7 @@ def predict_winner(year: int, round: int, top_k: int = 1):
         ]
     }
 
-
-# Entrypoint local -------------------------------------------------------
+# ───────────────────────── entrypoint local ─────────────────────────
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
