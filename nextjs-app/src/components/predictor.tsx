@@ -51,9 +51,6 @@ export default function Predictor() {
                 <span>
                   {idx + 1}. {w.driver}
                 </span>
-                <span className="font-semibold">
-                  {(w.win_probability * 100).toFixed(1)} %
-                </span>
               </li>
             ))}
           </ol>

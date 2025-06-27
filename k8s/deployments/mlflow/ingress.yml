@@ -7,7 +7,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-    # - host: ml.example.com
+    # - host: 108-141-82-240.nip.io
     - http:
         paths:
           - path: /

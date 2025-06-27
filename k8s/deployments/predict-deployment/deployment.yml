@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: predict
-          image: f1predictoracr.azurecr.io/backend/predictapi:v1
+          image: f1predictoracr.azurecr.io/backend/predictapi:v2
           ports:
             - containerPort: 8000
           env:
